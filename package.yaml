@@ -31,9 +31,11 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - aeson
     - Spock
     - mtl
     - text
+    - wai-extra
 
 
 # tests:
