@@ -8,24 +8,30 @@ import Data.IORef
 import Data.Monoid
 import qualified Data.Text as T
 
-data MySession = EmptySession
-data MyAppState = DummyAppState (IORef Int)
+data Session = EmptySession
+data AppState = AppState (IORef Int)
+
+type Handler a = ActionT (WebStateM () Session AppState) a
 
 main :: IO ()
 main =
     do ref <- newIORef 0
-       spockCfg <- defaultSpockCfg EmptySession PCNoDatabase (DummyAppState ref)
+       spockCfg <- defaultSpockCfg EmptySession PCNoDatabase (AppState ref)
        runSpock 8080 (spock spockCfg app)
 
-app :: SpockM () MySession MyAppState ()
-app =
-    do get root $
-           text "Hello World!"
-       get ("hello" <//> var) $ \name ->
-           do (DummyAppState ref) <- getState
-              visitorNumber <- liftIO $
-                atomicModifyIORef' ref $ \i -> (i+1, i+1)
-              text
-                ( "Hello " <> name
-                  <> ", you are visitor number "
-                  <> T.pack (show visitorNumber) )
+rootHandler :: Handler a
+rootHandler = text "Hello World!"
+
+greetHandler :: T.Text -> Handler a
+greetHandler name = do
+  AppState ref <- getState
+  visitorNumber <- liftIO $
+    atomicModifyIORef' ref $ \i -> (i+1, i+1)
+  text ( "Hello " <> name
+         <> ", you are visitor number "
+         <> T.pack (show visitorNumber) )
+
+app :: SpockM () Session AppState ()
+app = do
+  get root rootHandler
+  get ("hello" <//> var) greetHandler
